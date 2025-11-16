@@ -129,14 +129,15 @@ app.layout = dbc.Container([
         ]),
 
         # ---------- TAB 6: Retornos Cripto ----------
-        dcc.Tab(label="Cripto - Retornos", children=[
-            dcc.Dropdown(
-                id="crypto-dropdown-6",
-                options=[{"label": t, "value": t} for t in dfc["ticker"].unique()],
-                value=["BTC-USD"], multi=True
-            ),
-            dcc.Graph(id="graf-crypto-6")
-        ])
+    dcc.Tab(label="Cripto - Retornos", children=[
+         dcc.Dropdown(
+             id="crypto-dropdown-6",
+             options=[{"label": t, "value": t} for t in dfc["ticker"].unique()],
+             value="ETH-USD"
+         ),
+         dcc.Graph(id="graf-crypto-6"),
+         html.Div(id="tabla-crypto-6")
+     ])
     ])
 ], fluid=True)
 
@@ -224,10 +225,55 @@ def g5(tickers):
 
 @app.callback(
     Output("graf-crypto-6", "figure"),
+    Output("tabla-crypto-6", "children"),
     Input("crypto-dropdown-6", "value")
 )
-def g6(tickers):
-    return px.line(dfc[dfc["ticker"].isin(tickers)], x="Fecha", y="ret", color="ticker")
+def g6(ticker):
+    if isinstance(ticker, list):
+        ticker = ticker[0]
+    
+    cr = dfc[dfc["ticker"] == ticker].dropna(subset=["ret"])[["Fecha", "ret"]]
+
+    btc = dfc[dfc["ticker"] == "BTC-USD"].dropna(subset=["ret"])[["Fecha", "ret"]]
+    btc = btc.rename(columns={"ret": "ret_mkt"})
+
+    merged = pd.merge(cr, btc, on="Fecha", how="inner")
+    
+    slope, intercept, r, p, std_err = stats.linregress(
+        merged["ret_mkt"], 
+        merged["ret"]
+    )
+
+    beta = slope
+    rp = merged["ret"].mean() * 252
+    rm = merged["ret_mkt"].mean() * 252
+
+    rf_anual = 0.03783
+    rf = (1 + rf_anual) ** (1/252) - 1
+
+    alpha = (rp - rf*252) - beta*(rm - rf*252)
+    sharpe = (rp - rf*252) / (merged["ret"].std() * np.sqrt(252))
+
+    # Gráfica scatter
+    fig = px.scatter(
+        merged,
+        x="ret_mkt",
+        y="ret",
+        trendline="ols",
+        labels={
+            "ret_mkt": "Retorno BTC (Mercado)",
+            "ret": f"Retorno {ticker}"
+        },
+        title=f"Relación de {ticker} vs Bitcoin (Beta, Alpha, Sharpe)"
+    )
+    tabla = html.Table([
+        html.Tr([html.Th("Métrica"), html.Th("Valor")]),
+        html.Tr([html.Td("Beta"), html.Td(round(beta, 4))]),
+        html.Tr([html.Td("Alpha Jensen"), html.Td(round(alpha, 4))]),
+        html.Tr([html.Td("Sharpe Ratio"), html.Td(round(sharpe, 4))])
+    ], style={"margin": "auto"})
+    
+    return fig, tabla
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
