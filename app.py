@@ -46,7 +46,7 @@ rf = (1 + rf_anual) ** (1 / 252) - 1
 df1 = pd.read_csv("Crypto1.csv")
 df2 = pd.read_csv("Crypto2.csv")
 
-dfc = pd.concat([df1,df2]).reset_index(Drop=True)
+dfc = pd.concat([df1,df2]).reset_index(drop=True)
 
 dfc["Fecha"] = pd.to_datetime(dfc["Fecha"])
 dfc["ret"] = dfc.groupby("ticker")["Close"].pct_change()
