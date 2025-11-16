@@ -48,7 +48,7 @@ df2 = pd.read_csv("Crypto2.csv")
 
 dfc = pd.concat([df1,df2]).reset_index(drop=True)
 
-dfc["Fecha"] = pd.to_datetime(dfc["Fecha"])
+dfc["Fecha"] = pd.to_datetime(dfc["Date"])
 dfc["ret"] = dfc.groupby("ticker")["Close"].pct_change()
 
 # ---------------- APP ----------------
